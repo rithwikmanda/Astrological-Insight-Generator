@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astro Insight</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        input, select { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+        button { padding: 0.7rem 1.5rem; background-color: #6200ea; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #3700b3; }
+        #result { margin-top: 2rem; padding: 1rem; border: 1px solid #ccc; display: none; background-color: #f9f9f9; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Get Your Astrological Insight</h1>
+    
+    <form id="astroForm">
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" required>
+        </div>
+        <div class="form-group">
+            <label for="birth_date">Birth Date:</label>
+            <input type="date" id="birth_date" required>
+        </div>
+        <div class="form-group">
+            <label for="birth_time">Birth Time:</label>
+            <input type="time" id="birth_time" required>
+        </div>
+        <div class="form-group">
+            <label for="birth_place">Birth Place:</label>
+            <input type="text" id="birth_place" required>
+        </div>
+        <div class="form-group">
+            <label for="language">Language:</label>
+            <select id="language">
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+            </select>
+        </div>
+        <button type="submit">Generate Insight</button>
+    </form>
+
+    <div id="result">
+        <h2 id="zodiacSign"></h2>
+        <p id="insightText"></p>
+    </div>
+
+    <script>
+        document.getElementById('astroForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('result');
+            const zodiacHeader = document.getElementById('zodiacSign');
+            const insightPara = document.getElementById('insightText');
+            
+            // Clear previous results
+            resultDiv.style.display = 'none';
+            zodiacHeader.textContent = 'Loading...';
+            insightPara.textContent = '';
+            resultDiv.style.display = 'block';
+
+            const data = {
+                name: document.getElementById('name').value,
+                birth_date: document.getElementById('birth_date').value,
+                birth_time: document.getElementById('birth_time').value,
+                birth_place: document.getElementById('birth_place').value,
+                language: document.getElementById('language').value
+            };
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                zodiacHeader.textContent = `Zodiac: ${result.zodiac}`;
+                insightPara.textContent = result.insight;
+                
+            } catch (error) {
+                zodiacHeader.textContent = 'Error';
+                insightPara.textContent = 'Failed to fetch insight. Make sure the backend is running.';
+                insightPara.classList.add('error');
+            }
+        });
+    </script>
+</body>
+</html>

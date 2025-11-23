@@ -57,6 +57,21 @@ A full-stack application that generates personalized astrological insights based
 3.  Click "Generate Insight".
 4.  The system will calculate your Zodiac sign and display a personalized message.
 
+## How it Works
+
+### 1. Zodiac Calculation
+The system takes the user's birth date and calculates the Zodiac sign using standard Western astrology rules (e.g., October 25 -> Scorpio).
+
+### 2. Insight Generation (The AI Part)
+The core logic for generating the horoscope follows a robust two-step process:
+*   **Attempt 1 (Local LLM)**: The system attempts to connect to **Ollama** running locally. It sends a prompt to the **Llama 3** model: *"You are a mystical astrologer... give a horoscope for [Name], a [Sign]..."*. The model generates a unique, natural-language response in English.
+*   **Fallback Mechanism**: If Ollama is not running or the connection fails, the system gracefully catches the error and selects a pre-written horoscope from a template list. This ensures the user always gets a result, even if the AI is offline.
+
+### 3. Multilingual Support
+*   The insight is always generated in English first (to leverage the LLM's best capabilities).
+*   If the user selects **Hindi**, the system uses the `deep-translator` package to translate the English text into Hindi before sending it to the frontend.
+
+
 ## Project Structure
 
 *   `main.py`: FastAPI backend entry point. Handles API routes and serves the frontend.

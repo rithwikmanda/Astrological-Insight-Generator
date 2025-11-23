@@ -29,8 +29,8 @@ A full-stack application that generates personalized astrological insights based
 
 2.  **Create a Virtual Environment** (Optional but recommended):
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    conda create -n astro
+    conda activate astro
     ```
 
 3.  **Install Dependencies**:
@@ -42,7 +42,7 @@ A full-stack application that generates personalized astrological insights based
 
 1.  **Start the Backend Server**:
     ```bash
-    uvicorn main:app --reload
+    python main.py
     ```
     You should see output indicating the server is running on `http://0.0.0.0:8000`.
 

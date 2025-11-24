@@ -70,6 +70,24 @@ def get_vedic_details(date_obj: datetime, time_str: str, place: str):
         print(f"Vedic Error: {e}")
         return default_data
 
+def get_current_transit_moon():
+    """Calculates where the Moon is RIGHT NOW in the sky."""
+    if not HAS_VEDIC_LIBS: return "Unknown"
+    
+    try:
+        now = datetime.now()
+        jd = swe.julday(now.year, now.month, now.day, now.hour + now.minute/60.0)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        result = swe.calc_ut(jd, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        
+        moon_long = result[0][0] if isinstance(result[0], (tuple, list)) else result[0]
+        
+        rasi_names = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
+        return rasi_names[int(moon_long / 30) % 12]
+    except Exception as e:
+        print(f"Transit Error: {e}")
+        return "Unknown"
+
 # ==========================================
 # 2. Core Logic
 # ==========================================
@@ -92,22 +110,33 @@ def translate_stub(text: str, target_lang: str) -> str:
     if target_lang.lower() == "english": return text
     if not HAS_TRANSLATOR: return text
     try:
-        lang_code = "hi" if target_lang.lower() == "hindi" else "en"
+        # Map languages to codes
+        lang_map = {
+            "hindi": "hi",
+            "telugu": "te"
+        }
+        # Default to 'en' if language not found, though logic prevents this for English input
+        lang_code = lang_map.get(target_lang.lower(), "en")
+        
         return GoogleTranslator(source='auto', target=lang_code).translate(text)
     except: return text
 
 def generate_insight(name: str, zodiac: str, category: str = "General", language: str = "English", vedic_data: dict = None) -> str:
     """Standard non-streaming generation (used for fallback/translation)."""
     insight_text = ""
-    vedic_info = f" Vedic Moon: {vedic_data['rasi']}." if vedic_data and vedic_data.get("rasi") != "Unknown" else ""
-
+    # vedic_info = f" Vedic Moon: {vedic_data['rasi']}." if vedic_data and vedic_data.get("rasi") != "Unknown" else ""
+    current_moon = get_current_transit_moon()
+    
+    vedic_info = f"Moon Sign: {vedic_data.get('rasi', 'Unknown')}"
     if HAS_LANGCHAIN:
         try:
             llm = Ollama(model="llama3") 
             prompt = (
-                f"You are a mystical astrologer. "
-                f"Give a short, 2-sentence daily horoscope for {name}, a {zodiac}.{vedic_info} "
-                f"Focus specifically on {category} advice."
+                f"You are an expert Vedic astrologer. "
+                f"User Profile: Name: {name}, Sun Sign: {zodiac}, {vedic_info}. "
+                f"Current Sky: The Moon is currently transiting through {current_moon}. "
+                f"Task: Explain how a {current_moon} Moon affects a {vedic_data.get('rasi', zodiac)} person specifically regarding {category}. "
+                f"Keep it short, mystical, and practical."
             )
             insight_text = llm.invoke(prompt)
         except: pass
@@ -123,16 +152,22 @@ def generate_insight(name: str, zodiac: str, category: str = "General", language
 
 def generate_insight_stream(name: str, zodiac: str, category: str, language: str, vedic_data: dict = None):
     """Generator for streaming response."""
-    vedic_info = f" Vedic Moon: {vedic_data['rasi']}." if vedic_data and vedic_data.get("rasi") != "Unknown" else ""
     
-    # 1. Try Streaming (English Only)
+    # 1. Get Real-Time Transit Data
+    current_moon = get_current_transit_moon()
+    
+    vedic_info = f"Moon Sign: {vedic_data.get('rasi', 'Unknown')}"
+    
+    # 2. Try Streaming (English Only)
     if HAS_LANGCHAIN and language.lower() == "english":
         try:
             llm = Ollama(model="llama3")
             prompt = (
-                f"You are a mystical astrologer. "
-                f"Give a short, 2-sentence daily horoscope for {name}, a {zodiac}.{vedic_info} "
-                f"Focus specifically on {category} advice."
+                f"You are an expert Vedic astrologer. "
+                f"User Profile: Name: {name}, Sun Sign: {zodiac}, {vedic_info}. "
+                f"Current Sky: The Moon is currently transiting through {current_moon}. "
+                f"Task: Explain how a {current_moon} Moon affects a {vedic_data.get('rasi', zodiac)} person specifically regarding {category}. "
+                f"Keep it short, mystical, and practical."
             )
             for chunk in llm.stream(prompt):
                 yield chunk
@@ -140,7 +175,7 @@ def generate_insight_stream(name: str, zodiac: str, category: str, language: str
         except Exception as e:
             print(f"Stream Error: {e}")
     
-    # 2. Fallback / Translation (Non-streaming)
+    # 3. Fallback / Translation (Non-streaming)
     # If Hindi or LLM fails, generate full text and yield it as one chunk
     full_text = generate_insight(name, zodiac, category, language, vedic_data)
-    return full_text
+    yield full_text

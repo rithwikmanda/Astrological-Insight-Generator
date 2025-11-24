@@ -52,24 +52,26 @@ A full-stack application that generates personalized astrological insights based
 
 ## Usage
 
-1.  Enter your Name, Birth Date, Time, and Place.
-2.  Select your preferred language (English or Hindi).
-3.  Click "Generate Insight".
-4.  The system will calculate your Zodiac sign and display a personalized message.
+1.  **Enter Birth Details**: Name, Date, Time, and Place (City).
+2.  **Select Focus Area**: Choose between General, Love, Career, or Health.
+3.  **Select Language**: English, Hindi, or Telugu.
+4.  **Generate**: Click the button.
+    *   The system first calculates your Zodiac and Vedic details.
+    *   Then, it streams the AI-generated horoscope based on the current planetary positions.
 
 ## How it Works
 
-### 1. Zodiac Calculation
-The system takes the user's birth date and calculates the Zodiac sign using standard Western astrology rules (e.g., October 25 -> Scorpio).
+### 1. Astronomical Calculation
+*   **Geocoding**: Converts the "Birth Place" city into Latitude/Longitude using `geopy`.
+*   **Swiss Ephemeris**: Uses `pyswisseph` to calculate the exact position of the Moon at the time of birth (for Vedic Rasi/Nakshatra) and the **current** position of the Moon (for daily transits).
 
 ### 2. Insight Generation (The AI Part)
-The core logic for generating the horoscope follows a robust two-step process:
-*   **Attempt 1 (Local LLM)**: The system attempts to connect to **Ollama** running locally. It sends a prompt to the **Llama 3** model: *"You are a mystical astrologer... give a horoscope for [Name], a [Sign]..."*. The model generates a unique, natural-language response in English.
-*   **Fallback Mechanism**: If Ollama is not running or the connection fails, the system gracefully catches the error and selects a pre-written horoscope from a template list. This ensures the user always gets a result, even if the AI is offline.
+*   **Prompt Engineering**: The system constructs a detailed prompt containing the user's Western Sun Sign, Vedic Moon Sign, and the Current Moon Transit.
+*   **Streaming**: The backend connects to Ollama and streams the response token-by-token to the frontend, creating a smooth reading experience.
 
 ### 3. Multilingual Support
-*   The insight is always generated in English first (to leverage the LLM's best capabilities).
-*   If the user selects **Hindi**, the system uses the `deep-translator` package to translate the English text into Hindi before sending it to the frontend.
+*   If **English** is selected, the stream is piped directly to the UI.
+*   If **Hindi** or **Telugu** is selected, the system generates the full English text first, then uses `deep-translator` to convert it before sending the response.
 
 
 ## Project Structure

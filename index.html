@@ -35,6 +35,18 @@
             <label for="birth_place">Birth Place:</label>
             <input type="text" id="birth_place" required>
         </div>
+        
+        <!-- New Category Dropdown -->
+        <div class="form-group">
+            <label for="category">Focus Area:</label>
+            <select id="category">
+                <option value="General">General</option>
+                <option value="Love & Relationships">Love & Relationships</option>
+                <option value="Career & Finance">Career & Finance</option>
+                <option value="Health & Wellness">Health & Wellness</option>
+            </select>
+        </div>
+
         <div class="form-group">
             <label for="language">Language:</label>
             <select id="language">
@@ -47,6 +59,7 @@
 
     <div id="result">
         <h2 id="zodiacSign"></h2>
+        <p id="vedicDetails" style="font-style: italic; color: #555;"></p>
         <p id="insightText"></p>
     </div>
 
@@ -56,43 +69,61 @@
             
             const resultDiv = document.getElementById('result');
             const zodiacHeader = document.getElementById('zodiacSign');
+            const vedicPara = document.getElementById('vedicDetails');
             const insightPara = document.getElementById('insightText');
             
-            // Clear previous results
-            resultDiv.style.display = 'none';
-            zodiacHeader.textContent = 'Loading...';
-            insightPara.textContent = '';
+            // Reset UI
             resultDiv.style.display = 'block';
+            zodiacHeader.textContent = 'Calculating...';
+            vedicPara.textContent = '';
+            insightPara.textContent = 'Consulting the stars...';
 
             const data = {
                 name: document.getElementById('name').value,
                 birth_date: document.getElementById('birth_date').value,
                 birth_time: document.getElementById('birth_time').value,
                 birth_place: document.getElementById('birth_place').value,
-                language: document.getElementById('language').value
+                language: document.getElementById('language').value,
+                category: document.getElementById('category').value
             };
 
             try {
-                const response = await fetch('http://127.0.0.1:8000/predict', {
+                // 1. Get Calculation Data (Zodiac/Vedic)
+                const calcResponse = await fetch('http://127.0.0.1:8000/calculate', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!calcResponse.ok) throw new Error("Calculation failed");
+                const calcResult = await calcResponse.json();
+                
+                zodiacHeader.textContent = `Zodiac: ${calcResult.zodiac}`;
+                if (calcResult.vedic.rasi !== "Unknown") {
+                    vedicPara.textContent = `Vedic: ${calcResult.vedic.rasi} (Rasi), ${calcResult.vedic.nakshatra} (Nakshatra)`;
+                }
+
+                // 2. Stream the Insight Text
+                insightPara.textContent = ''; // Clear loading text
+                const streamResponse = await fetch('http://127.0.0.1:8000/stream_insight', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Error: ${response.statusText}`);
-                }
+                const reader = streamResponse.body.getReader();
+                const decoder = new TextDecoder();
 
-                const result = await response.json();
-                
-                zodiacHeader.textContent = `Zodiac: ${result.zodiac}`;
-                insightPara.textContent = result.insight;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    insightPara.textContent += chunk;
+                }
                 
             } catch (error) {
-                zodiacHeader.textContent = 'Error';
-                insightPara.textContent = 'Failed to fetch insight. Make sure the backend is running.';
+                console.error(error);
+                insightPara.textContent = 'Error generating insight. Please try again.';
                 insightPara.classList.add('error');
             }
         });
